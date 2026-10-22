@@ -65,7 +65,8 @@ async function readCapped(res, maxBytes) {
     if (bytes > maxBytes) {
       chunks.push(value.subarray(0, value.length - (bytes - maxBytes)));
       truncated = true;
-      await reader.cancel();
+      // Ask the stream to stop, but do not wait: a cancel can stay pending forever.
+      reader.cancel().catch(() => {});
       break;
     }
     chunks.push(value);
