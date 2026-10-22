@@ -122,7 +122,7 @@ section{padding:36px 0;border-bottom:1px solid var(--border)}
 .num{background:var(--accent);color:#0b0d10;font-weight:700;border-radius:6px;padding:2px 8px;font-size:13px}
 .badge{font-size:12px;border-radius:999px;padding:2px 10px;border:1px solid var(--border)}
 .lvl-initial,.lvl-critical{background:rgba(248,113,113,.12);color:var(--red)}.lvl-intermediate{background:rgba(251,146,60,.12);color:var(--orange)}
-.lvl-advanced{background:rgba(74,222,128,.12);color:var(--green)}.lvl-not_identified,.lvl-not_scored{color:var(--muted)}
+.lvl-advanced{background:rgba(74,222,128,.12);color:var(--green)}.lvl-not_identified,.lvl-not_scored,.lvl-insufficient{color:var(--muted)}
 table.items{width:100%;border-collapse:collapse;background:var(--card);border-radius:10px;overflow:hidden}
 table.items td{padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:top}table.items td.v{font-weight:600;white-space:normal}
 td.meta,p.meta,.ss{color:var(--dim);font-size:12.5px}.ni{color:var(--orange);font-weight:600}.sep{color:var(--dim)}

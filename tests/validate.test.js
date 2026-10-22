@@ -90,3 +90,7 @@ test('ids are unique, sections and types are known', () => {
   assert.ok(codes(withItem({ id: 'a', section: 'podcast', value: 1, unit: 'count', type: 'fact', source: { name: 'x', url: 'https://x.example/' } })).includes('E_SECTION'));
   assert.ok(codes(withItem({ id: 'b', section: 'seo', value: 1, unit: 'count', type: 'guess' })).includes('E_TYPE'));
 });
+
+test('research.json cannot mark its own items as automatic to skip the source rule', () => {
+  assert.ok(codes(withItem({ id: 'social.x.followers', section: 'social', value: 10, unit: 'count', type: 'fact', auto: true })).includes('E_FACT_SOURCE'));
+});

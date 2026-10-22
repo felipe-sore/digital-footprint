@@ -116,8 +116,10 @@ function providerItems(records = []) {
   return items;
 }
 
+// "auto" marks items the code made itself; research.json cannot claim it.
 function allItems(evidence, research = {}) {
-  return [...siteItems(evidence), ...providerItems(evidence.providers), ...(research.items || [])];
+  const researched = (research.items || []).map(({ auto, ...item }) => item);
+  return [...siteItems(evidence), ...providerItems(evidence.providers), ...researched];
 }
 
 module.exports = { siteItems, providerItems, allItems, SECTIONS, TYPES, AD_TAGS, MEASUREMENT_TAGS };
