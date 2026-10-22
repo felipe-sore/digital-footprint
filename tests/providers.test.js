@@ -128,3 +128,14 @@ test('provider numbers become provider estimates with tool, month and market', (
   const none = providerItems([{ provider: 'similarweb', label: 'Similarweb', market: 'us', period: '2026-09', metrics: null, note: 'no data' }]);
   assert.equal(none[0].type, 'not_identified');
 });
+
+test('providers: one failing provider does not lose the others, and its failure is not cached', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'footprint-'));
+  const r = recorder((url) => (url.startsWith('https://api.semrush.com/') ? new Response('down', { status: 503 }) : new Response(JSON.stringify(DATAFORSEO_DOC))));
+  const { records } = await runProviders('contoso.example', 'us', ['semrush', 'dataforseo'], { env: ENV, fetchImpl: r.fetchImpl, cacheDir: dir, now: NOW });
+  assert.equal(records[0].failed, true);
+  assert.match(records[0].note, /HTTP 503/);
+  assert.equal(records[1].metrics.organicKeywords, 1788);
+  assert.deepEqual(fs.readdirSync(dir).map((f) => f.split('-')[0]), ['dataforseo']);
+  assert.equal(providerItems(records).find((i) => i.id === 'traffic.no_data.semrush').type, 'not_identified');
+});

@@ -9,7 +9,9 @@ const MARKETS = require('../../config/markets.json');
 //   - --dry-run prints the plan (requests and cost) and calls nothing;
 //   - a run refuses to make more than maxRequests calls;
 //   - results are cached per provider, domain, market and month, so building the
-//     report again does not pay again. The cache never holds a key.
+//     report again does not pay again. The cache never holds a key;
+//   - one provider failing (wrong key, outage) does not lose the others or the
+//     site reading: it becomes "not identified" with the reason, and is not cached.
 // Every number they return is the provider's model, not a measurement: each
 // record keeps the provider, the period and the market, and the report says so.
 
@@ -56,7 +58,14 @@ async function runProviders(domain, marketCode, names, {
       log(`${p.label}: cached (${period})`);
       continue;
     }
-    const result = await p.fetch(domain, market, { env, fetchImpl, now });
+    let result;
+    try {
+      result = await p.fetch(domain, market, { env, fetchImpl, now });
+    } catch (err) {
+      log(`${p.label}: failed (${err.message})`);
+      records.push({ provider: p.name, label: p.label, domain, market: market.key, period, fetchedAt: now.toISOString(), metrics: null, note: `request failed: ${err.message}`, failed: true });
+      continue;
+    }
     const record = {
       provider: p.name, label: p.label, domain, market: market.key, period,
       fetchedAt: now.toISOString(), metrics: result.metrics, note: result.note || null,
