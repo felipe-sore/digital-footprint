@@ -1,0 +1,8 @@
+{
+  "_comment": "Review platforms and their rating scale. ReclameAqui is the Brazil module: a 0-10 score plus the share of complaints the company answered.",
+  "reclameaqui": { "name": "ReclameAqui", "scale": 10, "country": "BR" },
+  "google": { "name": "Google reviews", "scale": 5 },
+  "glassdoor": { "name": "Glassdoor", "scale": 5 },
+  "trustpilot": { "name": "Trustpilot", "scale": 5 },
+  "g2": { "name": "G2", "scale": 5 }
+}

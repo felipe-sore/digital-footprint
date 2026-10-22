@@ -1,0 +1,16 @@
+{
+  "_comment": "Maturity is computed from evidence, not written by the model. Each axis lists item ids (a prefix also matches 'id.provider'). An item passes, fails or is unknown; unknown items are left out. Level = passed / (passed + failed).",
+  "levels": { "intermediate": 0.4, "advanced": 0.75 },
+  "fastResponseMs": 2500,
+  "goodRating10": 7,
+  "critical": { "ratingBelow10": 4, "responseRateAtMost": 0 },
+  "axes": {
+    "site": ["site.title", "site.description", "site.h1", "site.ctas", "site.forms", "site.structured_data"],
+    "seo": ["seo.sitemap_entries", "seo.sitemap_files", "seo.organic_keywords", "seo.organic_traffic", "seo.organic_search_visits"],
+    "social": ["social.linkedin.link", "social.instagram.link", "social.youtube.link", "social.linkedin.followers", "social.instagram.followers"],
+    "paid": ["paid.tag.googleAds", "paid.tag.metaPixel", "paid.tag.linkedinInsight", "paid.tag.tiktokPixel", "paid.paid_keywords", "paid.ads_library"],
+    "content": ["content.blog_link", "content.posting_frequency", "social.youtube.link"],
+    "reputation": ["reputation"],
+    "technical": ["technical.https", "technical.http_to_https", "technical.viewport", "technical.robots", "technical.sitemap", "technical.response_ms"]
+  }
+}

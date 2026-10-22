@@ -1,0 +1,53 @@
+{
+  "schema": 1,
+  "company": { "name": "Fabrikam Analytics", "domain": "fabrikam.example" },
+  "collectedAt": "2026-10-22T12:00:00.000Z",
+  "site": {
+    "status": "ok",
+    "robots": { "found": true },
+    "httpStatus": 200,
+    "finalUrl": "https://www.fabrikam.example/",
+    "https": true,
+    "httpToHttps": true,
+    "responseMs": 1840,
+    "bytes": 182344,
+    "truncated": false,
+    "title": "Fabrikam Analytics | Revenue dashboards for B2B teams",
+    "description": "Connect your CRM and see pipeline, forecast and churn in one place.",
+    "lang": "en",
+    "h1": ["Know your pipeline before Monday's meeting"],
+    "h2": ["Connect your CRM in minutes", "Forecasts your board will trust", "Customers"],
+    "ctas": [{ "text": "Book a demo", "url": "https://www.fabrikam.example/demo" }, { "text": "Start free trial", "url": "https://app.fabrikam.example/signup" }],
+    "forms": 1,
+    "viewport": true,
+    "structuredData": ["Organization", "WebSite"],
+    "socials": { "linkedin": "https://linkedin.example/company/fabrikam-analytics", "youtube": "https://youtube.example/@fabrikam" },
+    "tags": { "ga4": true, "gtm": true, "googleAds": false, "metaPixel": false, "linkedinInsight": true, "tiktokPixel": false, "hubspot": true, "rdstation": false, "hotjar": false },
+    "blogLink": true,
+    "jsRendered": false,
+    "sitemap": { "found": true, "entries": 214, "index": false, "url": "https://www.fabrikam.example/sitemap.xml" }
+  },
+  "providers": [
+    {
+      "provider": "semrush", "label": "Semrush", "domain": "fabrikam.example", "market": "us", "period": "2026-10",
+      "fetchedAt": "2026-10-22T12:00:05.000Z",
+      "metrics": { "rank": 412883, "organicKeywords": 1260, "organicTraffic": 3900, "organicCostUsd": 11200, "paidKeywords": 38, "paidTraffic": 610, "paidCostUsd": 2900 },
+      "note": null, "costUsd": null
+    },
+    {
+      "provider": "similarweb", "label": "Similarweb", "domain": "fabrikam.example", "market": "us", "period": "2026-09",
+      "fetchedAt": "2026-10-22T12:00:06.000Z",
+      "metrics": {
+        "totalVisits": 12000, "organicSearchVisits": 3600, "paidSearchVisits": 700,
+        "channels": [
+          { "channel": "Direct", "visits": 5200, "organic": 5200, "paid": 0, "share": 43.3 },
+          { "channel": "Search", "visits": 4300, "organic": 3600, "paid": 700, "share": 35.8 },
+          { "channel": "Referrals", "visits": 1500, "organic": 1500, "paid": 0, "share": 12.5 },
+          { "channel": "Social", "visits": 800, "organic": 800, "paid": 0, "share": 6.7 },
+          { "channel": "Mail", "visits": 200, "organic": 200, "paid": 0, "share": 1.7 }
+        ]
+      },
+      "note": null, "costUsd": null
+    }
+  ]
+}

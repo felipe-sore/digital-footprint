@@ -1,0 +1,30 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      matrix:
+        node: [20, 22, 24]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - run: npm install --no-audit --no-fund
+      - run: npm test
+      - name: Example report (fictional company, no network)
+        if: matrix.node == 22
+        run: npm run example
+      - uses: actions/upload-artifact@v4
+        if: matrix.node == 22
+        with:
+          name: example-report
+          path: |
+            examples/report.html
+            examples/report.pt-BR.html

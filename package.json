@@ -1,0 +1,25 @@
+{
+  "name": "digital-footprint",
+  "version": "1.0.0",
+  "description": "Claude Code skill and Node.js CLI that audits a company's public digital presence. The agent researches; the code decides what the report is allowed to claim.",
+  "main": "src/validate.js",
+  "bin": {
+    "digital-footprint": "bin/digital-footprint.js"
+  },
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "example": "node bin/digital-footprint.js render examples && node bin/digital-footprint.js render examples --lang pt-BR && mv examples/report.html examples/report.pt-BR.html && node bin/digital-footprint.js render examples"
+  },
+  "engines": {
+    "node": ">=20.18.1"
+  },
+  "dependencies": {
+    "cheerio": "^1.2.0"
+  },
+  "license": "MIT",
+  "author": "Felipe Sore",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/felipe-sore/digital-footprint"
+  }
+}

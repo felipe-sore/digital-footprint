@@ -1,0 +1,9 @@
+{
+  "_comment": "Market code -> what each provider calls it. Semrush database, Similarweb country (ISO 3166 alpha-2), DataForSEO location and language.",
+  "us": { "name": "United States", "semrush": "us", "similarweb": "us", "dataforseo": { "location_code": 2840, "language_code": "en" } },
+  "br": { "name": "Brazil", "semrush": "br", "similarweb": "br", "dataforseo": { "location_code": 2076, "language_code": "pt" } },
+  "uk": { "name": "United Kingdom", "semrush": "uk", "similarweb": "gb", "dataforseo": { "location_code": 2826, "language_code": "en" } },
+  "pt": { "name": "Portugal", "semrush": "pt", "similarweb": "pt", "dataforseo": { "location_code": 2620, "language_code": "pt" } },
+  "de": { "name": "Germany", "semrush": "de", "similarweb": "de", "dataforseo": { "location_code": 2276, "language_code": "de" } },
+  "es": { "name": "Spain", "semrush": "es", "similarweb": "es", "dataforseo": { "location_code": 2724, "language_code": "es" } }
+}

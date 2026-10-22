@@ -1,0 +1,16 @@
+{
+  "_comment": "Report colors. Swap for your brand; the layout does not change.",
+  "bg": "#121417",
+  "bg2": "#181b20",
+  "card": "#1d2127",
+  "card2": "#242931",
+  "border": "rgba(255,255,255,0.08)",
+  "accent": "#5eead4",
+  "accent2": "#a5b4fc",
+  "red": "#f87171",
+  "orange": "#fb923c",
+  "green": "#4ade80",
+  "text": "#eef0f3",
+  "muted": "#9aa3ae",
+  "dim": "#6b7380"
+}

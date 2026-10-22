@@ -1,0 +1,63 @@
+{
+  "company": { "segment": "B2B SaaS, revenue analytics", "location": "Austin, TX", "founded": "Founded 2019", "team": "51-200 employees" },
+  "overview": [
+    "Fabrikam Analytics sells revenue dashboards to B2B sales and RevOps teams. Every name, number and link in this example is fictional.",
+    "The homepage states the value clearly and offers two paths (demo and free trial), and the company invests in search: Semrush models a small paid search budget next to a larger organic base.",
+    "The weak spots are public reputation and social proof: few reviews, one review site below average, and no customer stories linked from the homepage."
+  ],
+  "items": [
+    { "id": "social.linkedin.followers", "section": "social", "label": "LinkedIn followers", "value": 8400, "unit": "count", "type": "fact", "source": { "name": "LinkedIn company page", "url": "https://linkedin.example/company/fabrikam-analytics" } },
+    { "id": "social.youtube.subscribers", "section": "social", "label": "YouTube subscribers", "value": 310, "unit": "count", "type": "fact", "source": { "name": "YouTube channel", "url": "https://youtube.example/@fabrikam" } },
+    { "id": "social.instagram.followers", "section": "social", "label": "Instagram followers", "value": null, "unit": "count", "type": "not_identified", "note": "no profile linked from the site and none found by search" },
+    { "id": "content.posting_frequency", "section": "content", "label": "LinkedIn posts per month", "value": 6, "unit": "count", "type": "estimate", "basis": "18 posts visible in the last 90 days, divided by 3" },
+    { "id": "paid.ads_library", "section": "paid", "label": "Meta Ad Library", "value": null, "unit": "count", "type": "not_identified", "note": "the Ad Library asked for a login; check manually" },
+    { "id": "reputation.g2", "section": "reputation", "platform": "g2", "label": "G2", "value": 4.4, "scale": 5, "reviews": 23, "unit": "rating", "type": "fact", "source": { "name": "G2", "url": "https://g2.example/products/fabrikam-analytics/reviews" } },
+    { "id": "reputation.trustpilot", "section": "reputation", "platform": "trustpilot", "label": "Trustpilot", "value": 2.9, "scale": 5, "reviews": 11, "responseRate": 64, "unit": "rating", "type": "fact", "source": { "name": "Trustpilot", "url": "https://trustpilot.example/review/fabrikam.example" } },
+    { "id": "branding.consistency", "section": "branding", "label": "Visual consistency across site and social", "value": "Same logo, colors and tagline on the site, LinkedIn and YouTube", "unit": "text", "type": "fact", "source": { "name": "LinkedIn company page", "url": "https://linkedin.example/company/fabrikam-analytics" } }
+  ],
+  "complaints": [
+    { "title": "Billing kept charging after we cancelled", "url": "https://trustpilot.example/reviews/1001", "source": "Trustpilot" },
+    { "title": "Salesforce sync broke for two weeks", "url": "https://trustpilot.example/reviews/1002", "source": "Trustpilot" }
+  ],
+  "findings": {
+    "site": {
+      "diagnosis": "Clear headline aimed at the buyer's Monday pipeline review, with demo and trial calls to action above the fold.",
+      "evidence": "Title, description, one H1 and two calls to action read on the homepage; Organization structured data present.",
+      "opportunity": "Add customer logos and one quantified case next to the demo button.",
+      "risk": "Without social proof near the call to action, the trial path carries the whole conversion."
+    },
+    "seo": {
+      "diagnosis": "A solid organic base for the company's size: about 1.3k ranking keywords and 214 pages in the sitemap.",
+      "opportunity": "Comparison and integration pages (\"Fabrikam vs\", \"HubSpot forecast dashboard\") are a natural next cluster."
+    },
+    "social": {
+      "diagnosis": "LinkedIn is the main channel and is active. Instagram was not identified, which is common and usually fine for this buyer.",
+      "opportunity": "Short product clips from YouTube can be reused on LinkedIn."
+    },
+    "paid": {
+      "diagnosis": "The LinkedIn Insight Tag is on the page and Semrush models paid search activity. The Meta Ad Library could not be checked.",
+      "opportunity": "Retarget trial sign-ups who did not connect a CRM.",
+      "risk": "Paid search spend is modeled, not measured; confirm with the team before sizing a budget."
+    },
+    "content": {
+      "diagnosis": "A blog is linked from the homepage, and LinkedIn posting is estimated at a steady pace."
+    },
+    "reputation": {
+      "diagnosis": "Strong on G2 with few reviews; below average on Trustpilot, where about two thirds of complaints were answered.",
+      "opportunity": "Ask the 20 happiest accounts for G2 reviews; answer every open Trustpilot complaint.",
+      "risk": "Billing complaints are the kind a buyer reads right before a demo."
+    },
+    "technical": {
+      "diagnosis": "HTTPS with redirect, mobile viewport, robots.txt and sitemap in place, homepage answered in under 2 seconds."
+    },
+    "branding": {
+      "diagnosis": "Consistent identity across the site, LinkedIn and YouTube."
+    }
+  },
+  "critical": {},
+  "conclusion": [
+    "Fabrikam has real foundations: a clear offer, a working site, search investment and an active LinkedIn presence.",
+    "The two gaps that slow growth are thin public proof and an unanswered complaint trail on one review site.",
+    "Start with reputation: answer every open complaint and collect G2 reviews from happy accounts, then add proof next to the demo button."
+  ]
+}
