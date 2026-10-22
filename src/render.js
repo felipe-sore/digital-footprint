@@ -44,11 +44,17 @@ function formatValue(item, t, locale) {
   return (item.type === 'estimate' || item.type === 'provider_estimate') && numeric ? `~${out}` : out;
 }
 
+// Notes the code wrote carry a key and are translated; notes from research.json are shown as written.
+function noteText(item, t) {
+  const f = item.noteKey && t.notes[item.noteKey];
+  return f ? f(item.noteArgs || {}) : item.note;
+}
+
 function meta(item, t, locale) {
   const parts = [];
   if (item.type === 'provider_estimate') parts.push(T(`${item.provider}, ${item.period}, ${item.market}`));
   if (item.type === 'estimate') parts.push(T(`${t.est} ${item.basis}`));
-  if (item.type === 'not_identified') parts.push(T(item.note || t.checkManually));
+  if (item.type === 'not_identified') parts.push(T(noteText(item, t) || t.checkManually));
   if (item.unit === 'rating') {
     if (item.reviews !== undefined) parts.push(T(`${compact(item.reviews, locale)} ${t.reviews}`));
     if (item.responseRate !== undefined && item.responseRate !== null) parts.push(T(`${number(item.responseRate, locale)}% ${t.answered}`));
@@ -56,7 +62,7 @@ function meta(item, t, locale) {
   if ((item.type === 'fact' || item.type === 'provided') && !item.auto && item.source) {
     parts.push(item.source.url ? link(item.source.url, item.source.name || item.source.url) : T(item.source.name));
   }
-  if (item.note && item.type !== 'not_identified') parts.push(T(item.note));
+  if (item.note && item.type !== 'not_identified') parts.push(T(noteText(item, t)));
   return parts.join(' · ');
 }
 
@@ -147,7 +153,9 @@ function render({ evidence, research = {}, items, score, lang = 'en', theme = DE
   const first = (prefix) => items.find((i) => (i.id === prefix || i.id.startsWith(`${prefix}.`)) && i.type !== 'not_identified');
   const ctx = { items, research, score };
 
-  const metaRow = [company.segment, company.location, company.founded, company.team, now.toISOString().slice(0, 10)].filter(Boolean).map((m) => `<span>${T(m)}</span>`).join('');
+  // The date is when the data was collected, so rebuilding a report changes nothing.
+  const date = String(evidence.collectedAt || now.toISOString()).slice(0, 10);
+  const metaRow = [company.segment, company.location, company.founded, company.team, date].filter(Boolean).map((m) => `<span>${T(m)}</span>`).join('');
   const navKeys = ['overview', ...NUMBERED, ...(items.some((i) => i.section === 'traffic') ? ['traffic'] : []), 'maturity', 'conclusion'];
   const site = evidence.site || {};
   const notice = site.status && site.status !== 'ok'
@@ -168,7 +176,7 @@ ${(research.overview || []).length ? `<div class="card">${research.overview.map(
   const conclusion = `<section id="s-conclusion"><div class="sh"><span class="num">10</span><h2>${T(t.sections.conclusion)}</h2></div>${(research.conclusion || []).length ? `<div class="card">${research.conclusion.map((p) => `<p>${T(p)}</p>`).join('')}</div>` : ''}</section>`;
 
   const sources = [...new Map(items.filter((i) => i.source && i.source.name).map((i) => [i.source.name, i.source])).values()];
-  const footer = `<footer><div class="wrap"><b>Digital Footprint</b>: ${T(company.name)} · ${T(t.sources)}: ${sources.map((s) => (s.url && !/^Website$/.test(s.name) ? link(s.url, s.name) : T(s.name))).join(', ')} · ${T(t.generated)} ${T(now.toISOString().slice(0, 10))}</div></footer>`;
+  const footer = `<footer><div class="wrap"><b>Digital Footprint</b>: ${T(company.name)} · ${T(t.sources)}: ${sources.map((s) => (s.url && !/^Website$/.test(s.name) ? link(s.url, s.name) : T(s.name))).join(', ')} · ${T(t.collected)} ${T(date)}</div></footer>`;
 
   return `<!doctype html>
 <html lang="${lang === 'pt-BR' ? 'pt-BR' : 'en'}">

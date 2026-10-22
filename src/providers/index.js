@@ -3,6 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const MARKETS = require('../../config/markets.json');
+const { ProviderError } = require('./error');
 
 // Paid traffic and SEO providers. Each call spends credits, so:
 //   - nothing runs unless a provider is named on the command line;
@@ -10,8 +11,11 @@ const MARKETS = require('../../config/markets.json');
 //   - a run refuses to make more than maxRequests calls;
 //   - results are cached per provider, domain, market and month, so building the
 //     report again does not pay again. The cache never holds a key;
-//   - one provider failing (wrong key, outage) does not lose the others or the
-//     site reading: it becomes "not identified" with the reason, and is not cached.
+//   - one provider failing (wrong key, outage, bad answer) does not lose the others
+//     or the site reading: the metrics it would have filled become "not identified"
+//     with the reason, nothing is cached, and the command exits non-zero. A bug in
+//     this code is not a provider failure and still stops the run;
+//   - an unreadable cache file or a failed cache write never costs a paid result.
 // Every number they return is the provider's model, not a measurement: each
 // record keeps the provider, the period and the market, and the report says so.
 
@@ -36,6 +40,27 @@ function plan(names, { env = process.env } = {}) {
 
 const monthOf = (d) => d.toISOString().slice(0, 7);
 
+// Belt and braces: whatever the reason says, the provider's secrets never leave.
+function scrub(text, env, keys) {
+  let out = String(text);
+  for (const k of keys) if (env[k] && String(env[k]).length >= 4) out = out.split(String(env[k])).join('***');
+  return out;
+}
+
+function readCache(file, log, label) {
+  if (!file || !fs.existsSync(file)) return null;
+  try {
+    return JSON.parse(fs.readFileSync(file, 'utf8'));
+  } catch {
+    log(`${label}: cache file unreadable, ignoring it`);
+    return null;
+  }
+}
+
+// Exit code for a collect run: 1 when any provider failed, so a script or an
+// agent does not take a partial run for a complete one.
+const exitCodeFor = (records) => (records.some((r) => r.failed) ? 1 : 0);
+
 async function runProviders(domain, marketCode, names, {
   env = process.env, fetchImpl = (...a) => fetch(...a), cacheDir = null, maxRequests = 5,
   dryRun = false, now = new Date(), log = () => {},
@@ -53,27 +78,31 @@ async function runProviders(domain, marketCode, names, {
     const p = PROVIDERS[step.provider];
     const period = p.period ? p.period(now) : monthOf(now);
     const cacheFile = cacheDir ? path.join(cacheDir, `${p.name}-${domain}-${market.key}-${period}.json`) : null;
-    if (cacheFile && fs.existsSync(cacheFile)) {
-      records.push({ ...JSON.parse(fs.readFileSync(cacheFile, 'utf8')), cached: true });
+    const cached = readCache(cacheFile, log, p.label);
+    if (cached) {
+      records.push({ ...cached, cached: true });
       log(`${p.label}: cached (${period})`);
       continue;
     }
-    let result;
+    const base = { provider: p.name, label: p.label, domain, market: market.key, period, fills: p.fills, fetchedAt: now.toISOString() };
+    let record;
     try {
-      result = await p.fetch(domain, market, { env, fetchImpl, now });
+      const result = await p.fetch(domain, market, { env, fetchImpl, now });
+      record = { ...base, metrics: result.metrics, note: result.note || null, costUsd: result.costUsd ?? null };
     } catch (err) {
-      log(`${p.label}: failed (${err.message})`);
-      records.push({ provider: p.name, label: p.label, domain, market: market.key, period, fetchedAt: now.toISOString(), metrics: null, note: `request failed: ${err.message}`, failed: true });
+      if (!(err instanceof ProviderError)) throw err;
+      const reason = scrub(err.reason, env, p.env);
+      log(`${p.label}: failed (${reason})`);
+      records.push({ ...base, metrics: null, note: reason, failed: true, costUsd: err.costUsd ?? null });
       continue;
     }
-    const record = {
-      provider: p.name, label: p.label, domain, market: market.key, period,
-      fetchedAt: now.toISOString(), metrics: result.metrics, note: result.note || null,
-      costUsd: result.costUsd ?? null,
-    };
     if (cacheFile) {
-      fs.mkdirSync(cacheDir, { recursive: true });
-      fs.writeFileSync(cacheFile, `${JSON.stringify(record, null, 2)}\n`);
+      try {
+        fs.mkdirSync(cacheDir, { recursive: true });
+        fs.writeFileSync(cacheFile, `${JSON.stringify(record, null, 2)}\n`);
+      } catch (err) {
+        log(`${p.label}: result kept, but the cache could not be written (${err.code || err.message})`);
+      }
     }
     log(`${p.label}: ${record.metrics ? 'ok' : record.note} (${period})`);
     records.push(record);
@@ -81,4 +110,4 @@ async function runProviders(domain, marketCode, names, {
   return { plan: steps, records };
 }
 
-module.exports = { runProviders, plan, resolveMarket, PROVIDERS, MARKETS };
+module.exports = { runProviders, plan, resolveMarket, exitCodeFor, PROVIDERS, MARKETS };

@@ -102,3 +102,17 @@ test('CLI: a dry run names the cost and calls nothing', () => {
   assert.match(r.stderr, /Semrush: 1 request\(s\), 10 API units; missing SEMRUSH_API_KEY/);
   assert.match(r.stderr, /DataForSEO: 1 request\(s\)/);
 });
+
+test('notes written by the code are translated in the Portuguese report', () => {
+  const html = build({ lang: 'pt-BR' });
+  assert.match(html, /não está no HTML da página/);
+  assert.doesNotMatch(html, /not in the page HTML/);
+});
+
+test('the report date is the collection date, so rebuilding it changes nothing', () => {
+  const a = build();
+  const v = validate(example('evidence.json'), example('research.json'));
+  const b = render({ evidence: example('evidence.json'), research: example('research.json'), items: v.items, score: score(v.items), now: new Date('2030-01-01T00:00:00Z') });
+  assert.equal(a, b);
+  assert.match(a, /Data collected 2026-10-22/);
+});

@@ -21,8 +21,11 @@ jobs:
       - name: Example report (fictional company, no network)
         if: matrix.node == 22
         run: npm run example
-      - uses: actions/upload-artifact@v4
+      - name: Committed example reports match the code
         if: matrix.node == 22
+        run: git diff --exit-code -- examples/ || (echo "::error::examples/ is stale; commit the regenerated reports from the example-report artifact" && exit 1)
+      - uses: actions/upload-artifact@v4
+        if: always() && matrix.node == 22
         with:
           name: example-report
           path: |

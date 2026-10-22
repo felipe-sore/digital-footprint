@@ -8,14 +8,14 @@
 //   seobook.com;24041;5249;37332;143496;0;0;0
 // 10 API units per line.
 
+const { ProviderError, request } = require('./error');
+
 const COLUMNS = 'Dn,Rk,Or,Ot,Oc,Ad,At,Ac';
 
 function parse(text) {
   const lines = String(text || '').trim().split(/\r?\n/).filter(Boolean);
   if (lines[0] && /^ERROR\b/i.test(lines[0])) {
-    const err = new Error(`Semrush: ${lines[0].trim()}`);
-    err.notFound = /NOTHING FOUND/i.test(lines[0]);
-    throw err;
+    throw new ProviderError('Semrush', lines[0].trim(), { notFound: /NOTHING FOUND/i.test(lines[0]) });
   }
   if (lines.length < 2) return null;
   const header = lines[0].split(';').map((h) => h.trim());
@@ -37,14 +37,15 @@ module.exports = {
   name: 'semrush',
   label: 'Semrush',
   env: ['SEMRUSH_API_KEY'],
+  fills: ['organicTraffic', 'organicKeywords', 'paidTraffic', 'paidKeywords', 'paidCostUsd'],
   plan: () => ({ requests: 1, cost: '10 API units' }),
   async fetch(domain, market, { env, fetchImpl }) {
     const url = new URL('https://api.semrush.com/');
     url.search = new URLSearchParams({ type: 'domain_rank', key: env.SEMRUSH_API_KEY, export_columns: COLUMNS, domain, database: market.semrush }).toString();
-    const res = await fetchImpl(url.toString(), { signal: AbortSignal.timeout(20000) });
+    // Never echo the URL or the fetch error: the URL carries the key.
+    const res = await request('Semrush', () => fetchImpl(url.toString(), { signal: AbortSignal.timeout(20000) }));
+    if (!res.ok) throw new ProviderError('Semrush', `HTTP ${res.status}`);
     const text = await res.text();
-    // Never echo the URL: it carries the key.
-    if (!res.ok) throw new Error(`Semrush: HTTP ${res.status}`);
     let metrics;
     try {
       metrics = parse(text);

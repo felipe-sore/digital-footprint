@@ -10,6 +10,8 @@
 // Channel names in the docs' example ("Search", "Direct", "Mail"...) differ a little
 // from its prose, so they are kept as returned.
 
+const { ProviderError, request, readJson } = require('./error');
+
 function previousMonth(now) {
   const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
   return d.toISOString().slice(0, 7);
@@ -42,6 +44,7 @@ module.exports = {
   name: 'similarweb',
   label: 'Similarweb',
   env: ['SIMILARWEB_API_KEY'],
+  fills: ['totalVisits', 'organicSearchVisits', 'paidSearchVisits'],
   plan: () => ({ requests: 1, cost: '1 hit, 7 data credits per result' }),
   period: (now) => previousMonth(now),
   async fetch(domain, market, { env, fetchImpl, now }) {
@@ -51,10 +54,10 @@ module.exports = {
       api_key: env.SIMILARWEB_API_KEY, country: market.similarweb, granularity: 'monthly',
       start_date: month, end_date: month, main_domain_only: 'false', format: 'json',
     }).toString();
-    const res = await fetchImpl(url.toString(), { signal: AbortSignal.timeout(20000) });
+    const res = await request('Similarweb', () => fetchImpl(url.toString(), { signal: AbortSignal.timeout(20000) }));
     if (res.status === 404) return { metrics: null, note: 'no data for this domain or country' };
-    if (!res.ok) throw new Error(`Similarweb: HTTP ${res.status}`);
-    const metrics = parse(await res.json(), month);
+    if (!res.ok) throw new ProviderError('Similarweb', `HTTP ${res.status}`);
+    const metrics = parse(await readJson('Similarweb', res), month);
     return { metrics, note: metrics ? null : 'no data for this domain or country' };
   },
   parse,

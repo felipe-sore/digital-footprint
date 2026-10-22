@@ -8,7 +8,11 @@ const path = require('path');
 const semrush = require('../src/providers/semrush');
 const similarweb = require('../src/providers/similarweb');
 const dataforseo = require('../src/providers/dataforseo');
-const { runProviders } = require('../src/providers');
+const { runProviders, exitCodeFor, PROVIDERS } = require('../src/providers');
+const { validate } = require('../src/validate');
+const { score } = require('../src/score');
+const { render } = require('../src/render');
+const { example } = require('./helpers');
 const { providerItems } = require('../src/items');
 
 const NOW = new Date('2026-10-22T12:00:00Z');
@@ -137,5 +141,67 @@ test('providers: one failing provider does not lose the others, and its failure 
   assert.match(records[0].note, /HTTP 503/);
   assert.equal(records[1].metrics.organicKeywords, 1788);
   assert.deepEqual(fs.readdirSync(dir).map((f) => f.split('-')[0]), ['dataforseo']);
-  assert.equal(providerItems(records).find((i) => i.id === 'traffic.no_data.semrush').type, 'not_identified');
+  assert.equal(exitCodeFor(records), 1);
+  assert.equal(exitCodeFor(records.slice(1)), 0);
+});
+
+test('a failed provider marks the metrics it would have filled, so prose and score see the gap', async () => {
+  const r = recorder(() => new Response('denied', { status: 401 }));
+  const { records } = await runProviders('fabrikam.example', 'us', ['semrush'], { env: ENV, fetchImpl: r.fetchImpl, now: NOW });
+  const evidence = { ...example('evidence.json'), providers: records };
+  const items = providerItems(records);
+  for (const id of ['seo.organic_keywords.semrush', 'seo.organic_traffic.semrush', 'paid.paid_keywords.semrush']) {
+    assert.equal(items.find((i) => i.id === id).type, 'not_identified', id);
+  }
+  const research = example('research.json');
+  research.findings.seo.diagnosis = 'Zero organic keywords.';
+  assert.ok(validate(evidence, research).errors.some((e) => e.code === 'E_ABSENCE' && /seo.organic_keywords.semrush/.test(e.message)));
+  const s = score(validate(evidence, example('research.json')).items);
+  assert.ok(s.axes.seo.unknown >= 2, 'the missing Semrush numbers count as unknown');
+  const html = render({ evidence, research: example('research.json'), items: validate(evidence, example('research.json')).items, score: s, lang: 'pt-BR' });
+  assert.match(html, /Semrush: a consulta falhou \(HTTP 401\)/);
+  assert.doesNotMatch(html, /Semrush: Semrush/);
+});
+
+test('a bug in our own code is not reported as a provider failure', async () => {
+  const original = PROVIDERS.semrush.fetch;
+  PROVIDERS.semrush.fetch = async () => { throw new TypeError("Cannot read properties of undefined (reading 'x')"); };
+  try {
+    await assert.rejects(runProviders('contoso.example', 'us', ['semrush'], { env: ENV, now: NOW }), TypeError);
+  } finally {
+    PROVIDERS.semrush.fetch = original;
+  }
+});
+
+test('a network error that quotes the URL never puts the key in the evidence', async () => {
+  const r = recorder((url) => { throw new Error(`connect ECONNREFUSED ${url}`); });
+  const { records } = await runProviders('contoso.example', 'us', ['semrush', 'similarweb'], { env: ENV, fetchImpl: r.fetchImpl, now: NOW });
+  const dump = JSON.stringify(records);
+  assert.doesNotMatch(dump, /sk-test-semrush|sw-test-key/);
+  assert.equal(records[0].note, 'request did not complete (network error)');
+});
+
+test('a non-JSON answer is a provider failure; a billed DataForSEO task error keeps its cost', async () => {
+  const html = recorder(() => new Response('<html>maintenance</html>', { status: 200 }));
+  const sw = await runProviders('contoso.example', 'us', ['similarweb'], { env: ENV, fetchImpl: html.fetchImpl, now: NOW });
+  assert.match(sw.records[0].note, /not JSON/);
+  const billed = recorder(() => new Response(JSON.stringify({ status_code: 20000, cost: 0.0101, tasks: [{ status_code: 40501, status_message: 'Invalid Field', cost: 0.0101 }] })));
+  const d = await runProviders('contoso.example', 'us', ['dataforseo'], { env: ENV, fetchImpl: billed.fetchImpl, now: NOW });
+  assert.equal(d.records[0].failed, true);
+  assert.equal(d.records[0].costUsd, 0.0101);
+});
+
+test('an unreadable cache file or a failed cache write never loses a paid result', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'footprint-'));
+  fs.writeFileSync(path.join(dir, 'semrush-contoso.example-us-2026-10.json'), '{ broken');
+  const r = recorder(() => new Response(SEMRUSH_DOC));
+  const logs = [];
+  const a = await runProviders('contoso.example', 'us', ['semrush'], { env: ENV, fetchImpl: r.fetchImpl, cacheDir: dir, now: NOW, log: (m) => logs.push(m) });
+  assert.equal(a.records[0].metrics.organicKeywords, 5249);
+  assert.ok(logs.some((m) => /cache file unreadable/.test(m)));
+  const file = path.join(dir, 'not-a-dir');
+  fs.writeFileSync(file, 'x');
+  const b = await runProviders('contoso.example', 'us', ['semrush'], { env: ENV, fetchImpl: r.fetchImpl, cacheDir: path.join(file, 'cache'), now: NOW, log: (m) => logs.push(m) });
+  assert.equal(b.records[0].metrics.organicKeywords, 5249);
+  assert.ok(logs.some((m) => /cache could not be written/.test(m)));
 });

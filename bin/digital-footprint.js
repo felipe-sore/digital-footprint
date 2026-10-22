@@ -4,7 +4,7 @@
 const fs = require('fs');
 const path = require('path');
 const { collect, normalizeDomain } = require('../src/collect');
-const { runProviders, plan } = require('../src/providers');
+const { runProviders, plan, exitCodeFor } = require('../src/providers');
 const { validate } = require('../src/validate');
 const { score } = require('../src/score');
 const { render } = require('../src/render');
@@ -77,6 +77,11 @@ async function runCollect(o) {
   const researchFile = path.join(out, 'research.json');
   if (!fs.existsSync(researchFile)) writeJson(researchFile, RESEARCH_TEMPLATE);
   process.stdout.write(`${path.join(out, 'evidence.json')}\n${researchFile}\n`);
+  const failed = evidence.providers.filter((r) => r.failed);
+  if (failed.length) {
+    log(`${failed.map((r) => r.label).join(', ')} failed: evidence.json was written without that data (it reads "not identified"). Fix the cause and run again.`);
+    process.exitCode = exitCodeFor(evidence.providers);
+  }
 }
 
 function load(dir) {
