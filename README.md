@@ -47,7 +47,7 @@ cd digital-footprint && npm install
 node bin/digital-footprint.js render examples        # fictional company, no network
 ```
 
-[`examples/`](examples) holds the evidence, the research and the reports (English and Portuguese) for Fabrikam Analytics, a made-up company. Every name, number and link there is fictional.
+[`examples/`](examples) holds the evidence, the research and the reports (English and Portuguese) for Fabrikam Analytics, a made-up company. Every name, number and link there is fictional. Both reports use the same English research, so in the Portuguese one the labels and notes the code writes are translated and the agent's text is not; in real use the agent writes in the report's language.
 
 On a real company:
 
