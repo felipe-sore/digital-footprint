@@ -29,6 +29,9 @@ function isPrivateAddress(ip) {
     const x = ip.toLowerCase();
     if (x === '::' || x === '::1') return true;
     if (x.startsWith('::ffff:')) return isPrivateAddress(x.slice(7));
+    // Forms that carry an IPv4 address inside (NAT64, 6to4, IPv4-compatible) are
+    // refused outright rather than decoded: a homepage never needs them.
+    if (x.startsWith('64:ff9b:') || x.startsWith('2002:') || /^::[0-9a-f]{0,4}[:.]/.test(x)) return true;
     return /^f[cd]/.test(x) || /^fe[89ab]/.test(x) || x.startsWith('ff');
   }
   return true;
@@ -49,10 +52,22 @@ async function assertPublicHost(hostname, lookup = dns.lookup) {
   }
 }
 
+// The charset from the Content-Type header, or else from a <meta> in the first
+// bytes; UTF-8 when neither says. A Latin-1 site read as UTF-8 garbles its titles.
+function decode(buffer, contentType) {
+  const head = buffer.subarray(0, 2048).toString('latin1');
+  const declared = (/charset=["']?([\w-]+)/i.exec(contentType || '') || /<meta[^>]+charset=["']?([\w-]+)/i.exec(head) || [])[1];
+  try {
+    return new TextDecoder(declared || 'utf-8').decode(buffer);
+  } catch {
+    return new TextDecoder('utf-8').decode(buffer);
+  }
+}
+
 async function readCapped(res, maxBytes) {
   if (!res.body || typeof res.body.getReader !== 'function') {
-    const text = await res.text();
-    return { text: text.slice(0, maxBytes), bytes: Buffer.byteLength(text), truncated: text.length > maxBytes };
+    const all = Buffer.from(await res.arrayBuffer());
+    return { buffer: all.subarray(0, maxBytes), bytes: all.length, truncated: all.length > maxBytes };
   }
   const reader = res.body.getReader();
   const chunks = [];
@@ -71,7 +86,7 @@ async function readCapped(res, maxBytes) {
     }
     chunks.push(value);
   }
-  return { text: Buffer.concat(chunks.map((c) => Buffer.from(c))).toString('utf8'), bytes, truncated };
+  return { buffer: Buffer.concat(chunks.map((c) => Buffer.from(c))), bytes, truncated };
 }
 
 /**
@@ -102,8 +117,9 @@ async function safeGet(url, {
       continue;
     }
     const body = await readCapped(res, maxBytes);
-    return { status: res.status, url: current.toString(), redirects, body: body.text, bytes: body.bytes, truncated: body.truncated, ms: Date.now() - started };
+    const text = decode(body.buffer, res.headers.get('content-type'));
+    return { status: res.status, url: current.toString(), redirects, body: text, bytes: body.bytes, truncated: body.truncated, ms: Date.now() - started };
   }
 }
 
-module.exports = { safeGet, assertPublicHost, isPrivateAddress, USER_AGENT, ROBOTS_TOKEN };
+module.exports = { safeGet, assertPublicHost, isPrivateAddress, decode, USER_AGENT, ROBOTS_TOKEN };

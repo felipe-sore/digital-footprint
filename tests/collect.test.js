@@ -71,3 +71,40 @@ test('items: on a JavaScript page, what is missing is not identified', async () 
   assert.equal(get('site.ctas').type, 'not_identified');
   assert.equal(get('site.title').type, 'fact');
 });
+
+test('a site that answers only at www is read there', async () => {
+  const h = http({
+    'https://www.acme.example/robots.txt': new Response('User-agent: *\nAllow: /'),
+    'http://www.acme.example/': html(fixture('home.html')),
+  });
+  h.lookup = async (host) => {
+    if (host === 'acme.example') throw Object.assign(new Error('ENOTFOUND'), { code: 'ENOTFOUND' });
+    return [{ address: '93.184.216.34', family: 4 }];
+  };
+  const ev = await collect('https://www.acme.example/', { http: h });
+  assert.equal(ev.company.domain, 'acme.example');
+  assert.equal(ev.site.status, 'ok');
+  assert.equal(ev.site.host, 'www.acme.example');
+  assert.equal(ev.site.robots.found, true);
+});
+
+test('a sitemap not found at the usual addresses, or an unread robots.txt, is not identified', async () => {
+  const h = http({
+    'https://contoso.example/robots.txt': () => { throw new Error('timeout'); },
+    'http://contoso.example/': html(fixture('home.html')),
+  });
+  const ev = await collect('contoso.example', { http: h });
+  assert.equal(ev.site.sitemap.found, null);
+  const items = siteItems(ev);
+  const get = (id) => items.find((i) => i.id === id);
+  assert.equal(get('technical.sitemap').type, 'not_identified');
+  assert.equal(get('technical.robots').type, 'not_identified');
+  const missing = http({ 'https://contoso.example/robots.txt': new Response('nope', { status: 404 }), 'http://contoso.example/': html(fixture('home.html')) });
+  assert.equal(siteItems(await collect('contoso.example', { http: missing })).find((i) => i.id === 'technical.robots').value, false, 'a 404 is the server saying there is none');
+});
+
+test('a homepage that was not read leaves the main social links not identified', async () => {
+  const h = http({ 'http://shield.example/': html('<title>Just a moment...</title>', 503) });
+  const items = siteItems(await collect('shield.example', { http: h }));
+  assert.equal(items.find((i) => i.id === 'social.linkedin.link').type, 'not_identified');
+});

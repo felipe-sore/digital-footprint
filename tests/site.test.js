@@ -48,5 +48,12 @@ test('robots.txt: our group, then *, longest rule wins, Allow wins ties, wildcar
   assert.equal(robotsAllows('User-agent: *\nDisallow: /\nAllow: /$', 'digital-footprint'), true);
   assert.equal(robotsAllows('User-agent: *\nDisallow: /*', 'digital-footprint'), false);
   assert.equal(robotsAllows('', 'digital-footprint'), true);
+  assert.equal(robotsAllows('User-agent:\nDisallow: /\n\nUser-agent: *\nAllow: /', 'digital-footprint'), true, 'an empty user-agent names nobody');
   assert.deepEqual(sitemapsFrom('User-agent: *\nSitemap: https://contoso.example/sitemap_index.xml'), ['https://contoso.example/sitemap_index.xml']);
+});
+
+test('share buttons are not the company\'s profile', () => {
+  const html = '<a href="https://www.linkedin.com/shareArticle?url=x">Share</a><a href="https://www.facebook.com/sharer/sharer.php?u=x">Share</a><a href="https://twitter.com/intent/tweet?text=x">Tweet</a><a href="https://www.linkedin.com/company/acme">LinkedIn</a>';
+  const s = extract(html, 'https://acme.example/');
+  assert.deepEqual(s.socials, { linkedin: 'https://www.linkedin.com/company/acme' });
 });

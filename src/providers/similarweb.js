@@ -23,8 +23,9 @@ function parse(data, month) {
   const channels = [];
   let organicSearch = null;
   let paidSearch = null;
+  // Only the month asked for: an older point would go out labelled with the wrong month.
   for (const ch of perDomain) {
-    const point = (ch.visits || []).find((v) => String(v.date).startsWith(month)) || (ch.visits || []).at(-1);
+    const point = (ch.visits || []).find((v) => String(v.date).startsWith(month));
     if (!point) continue;
     const organic = Number(point.organic) || 0;
     const paid = Number(point.paid) || 0;
@@ -32,6 +33,7 @@ function parse(data, month) {
     if (/search/i.test(ch.source_type)) { organicSearch = organic; paidSearch = paid; }
   }
   const total = channels.reduce((s, c) => s + c.visits, 0);
+  if (!channels.length || !total) return null; // no data is not zero visits
   return {
     totalVisits: total,
     organicSearchVisits: organicSearch,

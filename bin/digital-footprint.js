@@ -4,7 +4,8 @@
 const fs = require('fs');
 const path = require('path');
 const { collect, normalizeDomain } = require('../src/collect');
-const { runProviders, plan, exitCodeFor } = require('../src/providers');
+const { runProviders, preflight, exitCodeFor } = require('../src/providers');
+const { parseArgs } = require('../src/args');
 const { validate } = require('../src/validate');
 const { score } = require('../src/score');
 const { render } = require('../src/render');
@@ -37,18 +38,6 @@ const RESEARCH_TEMPLATE = {
   conclusion: [],
 };
 
-function parseArgs(argv) {
-  const o = { _: [] };
-  const valued = ['name', 'out', 'market', 'providers', 'maxRequests', 'lang'];
-  for (let i = 0; i < argv.length; i++) {
-    const a = argv[i];
-    if (!a.startsWith('--')) { o._.push(a); continue; }
-    const name = a.slice(2).replace(/-([a-z])/g, (_, c) => c.toUpperCase());
-    if (valued.includes(name)) o[name] = argv[++i]; else o[name] = true;
-  }
-  return o;
-}
-
 const readJson = (file) => JSON.parse(fs.readFileSync(file, 'utf8'));
 const writeJson = (file, data) => fs.writeFileSync(file, `${JSON.stringify(data, null, 2)}\n`);
 const log = (m) => process.stderr.write(`${m}\n`);
@@ -57,12 +46,18 @@ async function runCollect(o) {
   const domain = normalizeDomain(o._[1]);
   const names = o.providers ? String(o.providers).split(',').map((s) => s.trim()).filter(Boolean) : [];
   const market = o.market || 'us';
+  const maxRequests = o.maxRequests ?? 5;
+  // Market, keys and the request cap are checked before anything is fetched,
+  // and the dry run reports exactly what the real run would refuse.
+  const pre = preflight(names, market, { maxRequests });
   if (o.dryRun) {
-    const steps = plan(names);
-    if (!steps.length) log('No providers named: nothing would be paid for. The site read is free.');
-    for (const s of steps) log(`${s.label}: ${s.requests} request(s), ${s.cost}${s.missing.length ? `; missing ${s.missing.join(', ')}` : ''}`);
+    if (!pre.steps.length) log('No providers named: nothing would be paid for. The site read is free.');
+    for (const s of pre.steps) log(`${s.label}: ${s.requests} request(s), ${s.cost}${s.missing.length ? `; missing ${s.missing.join(', ')}` : ''}`);
+    for (const p of pre.problems) log(`would stop: ${p}`);
+    if (pre.problems.length) process.exitCode = 1;
     return;
   }
+  if (pre.problems.length) throw new Error(pre.problems.join('; '));
   const out = o.out || `footprint-${domain}`;
   fs.mkdirSync(out, { recursive: true });
   const evidence = o.noSite
@@ -70,7 +65,7 @@ async function runCollect(o) {
     : await collect(domain, { name: o.name });
   if (!o.noSite) log(`site: ${evidence.site.status}`);
   if (names.length) {
-    const { records } = await runProviders(domain, market, names, { cacheDir: path.join(out, 'cache'), maxRequests: Number(o.maxRequests || 5), log });
+    const { records } = await runProviders(domain, market, names, { cacheDir: path.join(out, 'cache'), maxRequests, log });
     evidence.providers = records;
   }
   writeJson(path.join(out, 'evidence.json'), evidence);
@@ -101,9 +96,11 @@ function check(dir) {
 async function main() {
   const o = parseArgs(process.argv.slice(2));
   const cmd = o._[0];
-  if (!cmd || o.help || !['collect', 'check', 'render'].includes(cmd)) {
-    process.stdout.write(HELP);
-    process.exit(cmd || o.help ? 0 : 1);
+  if (o.help) { process.stdout.write(HELP); return; }
+  // A mistyped command must not look like a passed check.
+  if (!['collect', 'check', 'render'].includes(cmd)) {
+    process.stderr.write(cmd ? `unknown command "${cmd}"\n\n${HELP}` : HELP);
+    process.exit(1);
   }
   if (cmd === 'collect') return runCollect(o);
   const dir = o._[1];

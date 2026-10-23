@@ -42,6 +42,8 @@ function siteItems(evidence) {
       notIdentified(id, section, unit, key, args);
     }
     for (const tag of AD_TAGS) notIdentified(`paid.tag.${tag}`, 'paid', 'bool', key, args);
+    // Without the homepage nobody knows which profiles it links to.
+    for (const name of MAIN_SOCIALS) notIdentified(`social.${name}.link`, 'social', 'url', key, args);
     return items;
   }
 
@@ -63,10 +65,13 @@ function siteItems(evidence) {
   else fact('technical.http_to_https', 'technical', s.httpToHttps, 'bool');
   fact('technical.viewport', 'technical', Boolean(s.viewport), 'bool');
   fact('technical.response_ms', 'technical', s.responseMs, 'ms');
-  fact('technical.robots', 'technical', Boolean(s.robots && s.robots.found), 'bool');
+  // A 404 for robots.txt is the server saying there is none; a timeout says nothing.
+  const robotsFound = s.robots ? s.robots.found : null;
+  if (robotsFound === null || robotsFound === undefined) notIdentified('technical.robots', 'technical', 'bool', 'robots_unread');
+  else fact('technical.robots', 'technical', robotsFound, 'bool');
   const sm = s.sitemap || {};
-  if (sm.found === null || sm.found === undefined) notIdentified('technical.sitemap', 'technical', 'bool', 'sitemap_unread');
-  else fact('technical.sitemap', 'technical', sm.found, 'bool');
+  if (sm.found === true || sm.found === false) fact('technical.sitemap', 'technical', sm.found, 'bool');
+  else notIdentified('technical.sitemap', 'technical', 'bool', 'sitemap_not_found');
   if (sm.found) fact(sm.index ? 'seo.sitemap_files' : 'seo.sitemap_entries', 'seo', sm.entries, 'count');
 
   const tags = s.tags || {};

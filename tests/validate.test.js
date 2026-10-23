@@ -94,3 +94,27 @@ test('ids are unique, sections and types are known', () => {
 test('research.json cannot mark its own items as automatic to skip the source rule', () => {
   assert.ok(codes(withItem({ id: 'social.x.followers', section: 'social', value: 10, unit: 'count', type: 'fact', auto: true })).includes('E_FACT_SOURCE'));
 });
+
+test('the overview and the conclusion cannot claim absence or quote unbacked percentages', () => {
+  const r = base();
+  r.conclusion.push('The company runs zero paid media.');
+  assert.ok(codes(r).includes('E_ABSENCE'));
+  const pct = base();
+  pct.overview.push('About 80% of the pipeline comes from referrals.');
+  const noPercentData = { ...evidence, providers: evidence.providers.filter((p) => p.provider !== 'similarweb') };
+  assert.ok(codes(pct, noPercentData).includes('E_PERCENT_TEXT'));
+});
+
+test('a malformed research.json is refused by check instead of crashing render', () => {
+  const noId = withItem({ section: 'social', type: 'fact', value: 1200, unit: 'count', source: { name: 'x', url: 'https://x.example/' } });
+  assert.ok(codes(noId).includes('E_SCHEMA'));
+  assert.ok(codes(withItem({ id: 'social.x', section: 'social', type: 'fact', value: '12,000', unit: 'count', source: { name: 'x', url: 'https://x.example/' } })).includes('E_SCHEMA'));
+  assert.ok(codes(withItem({ id: 'social.y', section: 'social', type: 'fact', value: 1, unit: 'people', source: { name: 'x', url: 'https://x.example/' } })).includes('E_SCHEMA'));
+  const because = base();
+  because.critical = { reputation: { because: 'reputation.g2' } };
+  assert.ok(codes(because).includes('E_SCHEMA'));
+  const findings = base();
+  findings.findings.site = 'text';
+  assert.ok(codes(findings).includes('E_SCHEMA'));
+  assert.ok(codes([]).includes('E_SCHEMA'));
+});

@@ -205,3 +205,17 @@ test('an unreadable cache file or a failed cache write never loses a paid result
   assert.equal(b.records[0].metrics.organicKeywords, 5249);
   assert.ok(logs.some((m) => /cache could not be written/.test(m)));
 });
+
+test('Similarweb: a month without data is no data, never zero, never another month', () => {
+  const empty = { visits: { 'acme.example': [{ source_type: 'Search', visits: [] }, { source_type: 'Direct', visits: [] }] } };
+  assert.equal(similarweb.parse(empty, '2026-09'), null);
+  const older = { visits: { 'acme.example': [{ source_type: 'Direct', visits: [{ date: '2026-07-01', organic: 900, paid: 0 }] }] } };
+  assert.equal(similarweb.parse(older, '2026-09'), null);
+});
+
+test('providers: a repeated name is one provider, paid once', async () => {
+  const r = recorder(() => new Response(SEMRUSH_DOC));
+  const { records } = await runProviders('contoso.example', 'us', ['semrush', 'semrush'], { env: ENV, fetchImpl: r.fetchImpl, now: NOW });
+  assert.equal(records.length, 1);
+  assert.equal(r.calls.length, 1);
+});

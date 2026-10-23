@@ -98,7 +98,8 @@ test('CLI: check refuses a broken research.json and writes nothing; render write
 test('CLI: a dry run names the cost and calls nothing', () => {
   const bin = path.join(__dirname, '..', 'bin', 'digital-footprint.js');
   const r = spawnSync(process.execPath, [bin, 'collect', 'contoso.example', '--providers', 'semrush,dataforseo', '--dry-run'], { encoding: 'utf8', env: { PATH: process.env.PATH } });
-  assert.equal(r.status, 0, r.stderr);
+  assert.equal(r.status, 1, 'missing keys: the real run would stop');
+  assert.match(r.stderr, /would stop: Semrush needs SEMRUSH_API_KEY/);
   assert.match(r.stderr, /Semrush: 1 request\(s\), 10 API units; missing SEMRUSH_API_KEY/);
   assert.match(r.stderr, /DataForSEO: 1 request\(s\)/);
 });

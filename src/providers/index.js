@@ -23,15 +23,16 @@ const PROVIDERS = Object.fromEntries(['semrush', 'similarweb', 'dataforseo'].map
 
 function resolveMarket(code) {
   const key = String(code || '').toLowerCase();
-  if (key.startsWith('_') || !MARKETS[key]) {
+  if (key.startsWith('_') || !Object.hasOwn(MARKETS, key)) {
     throw new Error(`unknown market "${code}". Use one of: ${Object.keys(MARKETS).filter((k) => !k.startsWith('_')).join(', ')}`);
   }
   return { key, ...MARKETS[key] };
 }
 
 function plan(names, { env = process.env } = {}) {
-  return names.map((name) => {
-    const p = PROVIDERS[name];
+  // "semrush,semrush" is one provider: a repeat would pay twice and duplicate every item.
+  return [...new Set(names)].map((name) => {
+    const p = Object.hasOwn(PROVIDERS, name) ? PROVIDERS[name] : null;
     if (!p) throw new Error(`unknown provider "${name}". Use: ${Object.keys(PROVIDERS).join(', ')}`);
     const missing = p.env.filter((k) => !env[k]);
     return { provider: name, label: p.label, ...p.plan(), missing };
@@ -39,6 +40,18 @@ function plan(names, { env = process.env } = {}) {
 }
 
 const monthOf = (d) => d.toISOString().slice(0, 7);
+
+// Everything that can refuse a run, checked before any request (the site read
+// included). Throws on an unknown market or provider; returns the plan and the
+// reasons a real run would stop.
+function preflight(names, marketCode, { env = process.env, maxRequests = 5 } = {}) {
+  const market = resolveMarket(marketCode);
+  const steps = plan(names, { env });
+  const total = steps.reduce((s, p) => s + p.requests, 0);
+  const problems = steps.filter((s) => s.missing.length).map((s) => `${s.label} needs ${s.missing.join(' and ')}`);
+  if (total > maxRequests) problems.push(`this run would make ${total} paid requests, above the limit of ${maxRequests} (raise --max-requests)`);
+  return { market, steps, total, problems };
+}
 
 // Belt and braces: whatever the reason says, the provider's secrets never leave.
 function scrub(text, env, keys) {
@@ -65,13 +78,10 @@ async function runProviders(domain, marketCode, names, {
   env = process.env, fetchImpl = (...a) => fetch(...a), cacheDir = null, maxRequests = 5,
   dryRun = false, now = new Date(), log = () => {},
 } = {}) {
-  const market = resolveMarket(marketCode);
-  const steps = plan(names, { env });
-  const total = steps.reduce((s, p) => s + p.requests, 0);
+  if (!Number.isInteger(maxRequests) || maxRequests < 0) throw new Error('maxRequests must be a whole number');
+  const { market, steps, problems } = preflight(names, marketCode, { env, maxRequests });
   if (dryRun) return { plan: steps, records: [] };
-  const missing = steps.filter((s) => s.missing.length);
-  if (missing.length) throw new Error(missing.map((s) => `${s.label} needs ${s.missing.join(' and ')}`).join('; '));
-  if (total > maxRequests) throw new Error(`this run would make ${total} paid requests, above the limit of ${maxRequests} (raise --max-requests)`);
+  if (problems.length) throw new Error(problems.join('; '));
 
   const records = [];
   for (const step of steps) {
@@ -110,4 +120,4 @@ async function runProviders(domain, marketCode, names, {
   return { plan: steps, records };
 }
 
-module.exports = { runProviders, plan, resolveMarket, exitCodeFor, PROVIDERS, MARKETS };
+module.exports = { runProviders, plan, preflight, resolveMarket, exitCodeFor, PROVIDERS, MARKETS };

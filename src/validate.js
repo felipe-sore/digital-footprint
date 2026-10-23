@@ -13,11 +13,62 @@ const RUBRIC = require('../config/rubric.json');
 //   - a paid tool's number names the tool, the month and the market;
 //   - "critical" needs the facts that support it (a review score below 4 of 10,
 //     or no complaint answered), so a 6/10 company that answers 95% is not critical;
-//   - the agent's prose cannot claim absence in a section where a source was not identified.
+//   - the agent's prose cannot claim absence in a section where a source was not
+//     identified, and the overview and conclusion cannot claim it while any source was not;
+//   - research.json has the shape the report needs, checked first, so a malformed
+//     file is refused by "check" instead of crashing "render".
 
 // Words that claim something is absent, in English, Portuguese and Spanish.
 const ABSENCE = /\b(zero|none|no (ads|advertising|paid media|campaigns?|presence|pixel|tracking|activity)|not (running|advertising|present|active)|does(?: not|n't) (run|advertise|have|use)|absent|inexistentes?|nenhuma?|sem (anúncios|anuncios|mídia paga|midia paga|presença|presenca|pixel|campanhas?)|não (anuncia|roda|possui|tem|investe|usa)|ausente|ausência|ninguna?|no tiene)\b/i;
 const PERCENT = /\d\s?%/;
+const UNITS = ['count', '%', 'usd', 'ms', 'bool', 'text', 'list', 'url', 'rating'];
+const ID = /^[a-z0-9][a-z0-9_.-]*$/i;
+
+const isStr = (v) => typeof v === 'string';
+const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
+const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
+const VALUE_OK = {
+  count: isNum, '%': isNum, usd: isNum, ms: isNum, rating: isNum,
+  bool: (v) => typeof v === 'boolean',
+  text: isStr, url: isStr,
+  list: (v) => Array.isArray(v) && v.every(isStr),
+};
+
+// The shape of research.json, before any rule runs.
+function checkShape(research, errors) {
+  const bad = (where, what) => errors.push({ code: 'E_SCHEMA', message: `${where}: ${what}` });
+  if (!isObj(research)) { bad('research.json', 'must be an object'); return; }
+  const lists = { items: (v) => isObj(v), complaints: (v) => isObj(v), overview: isStr, conclusion: isStr };
+  for (const [key, ok] of Object.entries(lists)) {
+    if (research[key] === undefined) continue;
+    if (!Array.isArray(research[key])) bad(key, 'must be a list');
+    else research[key].forEach((v, i) => { if (!ok(v)) bad(`${key}[${i}]`, key === 'items' || key === 'complaints' ? 'must be an object' : 'must be text'); });
+  }
+  for (const key of ['company', 'findings', 'critical']) {
+    if (research[key] !== undefined && !isObj(research[key])) bad(key, 'must be an object');
+  }
+  if (isObj(research.findings)) {
+    for (const [section, block] of Object.entries(research.findings)) {
+      if (!isObj(block)) { bad(`findings.${section}`, 'must be an object'); continue; }
+      for (const [k, v] of Object.entries(block)) if (!isStr(v)) bad(`findings.${section}.${k}`, 'must be text');
+    }
+  }
+  if (isObj(research.critical)) {
+    for (const [section, claim] of Object.entries(research.critical)) {
+      if (!isObj(claim) || (claim.because !== undefined && !(Array.isArray(claim.because) && claim.because.every(isStr)))) {
+        bad(`critical.${section}`, 'must be { "because": ["item id", ...], "reason": "..." }');
+      }
+    }
+  }
+  (Array.isArray(research.items) ? research.items : []).forEach((item, i) => {
+    if (!isObj(item)) return;
+    const where = `items[${i}]`;
+    if (!isStr(item.id) || !ID.test(item.id)) bad(where, 'needs an "id" made of letters, digits, dots, dashes or underscores');
+    if (!UNITS.includes(item.unit)) bad(where, `"unit" must be one of ${UNITS.join(', ')}`);
+    else if (item.type !== 'not_identified' && !VALUE_OK[item.unit](item.value)) bad(where, `value ${JSON.stringify(item.value)} does not fit unit "${item.unit}"`);
+    if (item.source !== undefined && !isObj(item.source)) bad(where, '"source" must be { "name", "url" }');
+  });
+}
 
 function rating10(item) {
   const scale = Number(item.scale);
@@ -68,6 +119,17 @@ function checkItem(item, errors) {
 }
 
 function checkFindings(research, items, errors) {
+  // The overview and the conclusion speak for the whole report.
+  const missingAll = items.filter((i) => i.type === 'not_identified');
+  const percentAll = items.some((i) => i.unit === '%' && ['fact', 'provided', 'provider_estimate'].includes(i.type));
+  for (const part of ['overview', 'conclusion']) {
+    const text = (research[part] || []).join(' ');
+    const match = text.match(ABSENCE);
+    if (missingAll.length && match) {
+      errors.push({ code: 'E_ABSENCE', message: `${part} says "${match[0]}", but ${missingAll.length} source(s) were not identified (${missingAll.slice(0, 5).map((i) => i.id).join(', ')}${missingAll.length > 5 ? ', ...' : ''}). Write "not identified" instead.` });
+    }
+    if (PERCENT.test(text) && !percentAll) errors.push({ code: 'E_PERCENT_TEXT', message: `${part} quotes a percentage, but no item holds percentage data` });
+  }
   for (const [section, block] of Object.entries(research.findings || {})) {
     if (!SECTIONS.includes(section)) {
       errors.push({ code: 'E_SECTION', message: `findings: unknown section "${section}"` });
@@ -113,6 +175,8 @@ function checkCritical(research, items, errors) {
 
 function validate(evidence, research = {}) {
   const errors = [];
+  checkShape(research, errors);
+  if (errors.length) return { ok: false, errors, items: [] };
   const items = allItems(evidence, research);
   const seen = new Set();
   for (const item of items) {

@@ -6,7 +6,7 @@ const { safeGet, assertPublicHost, isPrivateAddress } = require('../src/fetch');
 const { lookupStub, fetchStub, html, redirect } = require('./helpers');
 
 test('private, loopback, link-local and metadata addresses are private', () => {
-  for (const ip of ['127.0.0.1', '10.1.2.3', '172.16.0.1', '172.31.255.255', '192.168.1.1', '169.254.169.254', '100.64.0.1', '0.0.0.0', '::1', 'fd00::1', 'fe80::1', '::ffff:127.0.0.1']) {
+  for (const ip of ['127.0.0.1', '10.1.2.3', '172.16.0.1', '172.31.255.255', '192.168.1.1', '169.254.169.254', '100.64.0.1', '0.0.0.0', '::1', 'fd00::1', 'fe80::1', '::ffff:127.0.0.1', '64:ff9b::a9fe:a9fe', '2002:a9fe:a9fe::1', '::127.0.0.1']) {
     assert.equal(isPrivateAddress(ip), true, ip);
   }
   for (const ip of ['93.184.216.34', '8.8.8.8', '172.32.0.1', '2606:4700::1111']) assert.equal(isPrivateAddress(ip), false, ip);
@@ -51,4 +51,14 @@ test('the body is capped', async () => {
   const r = await safeGet('https://big.example/', { fetchImpl, lookup: lookupStub(), maxBytes: 1000 });
   assert.equal(r.body.length, 1000);
   assert.equal(r.truncated, true);
+});
+
+test('the page is decoded with its charset, so a Latin-1 site keeps its accents', async () => {
+  const body = Buffer.from('<title>Orçamento grátis</title>', 'latin1');
+  const { fetchImpl } = fetchStub({ 'https://latin.example/': new Response(body, { headers: { 'content-type': 'text/html; charset=ISO-8859-1' } }) });
+  const r = await safeGet('https://latin.example/', { fetchImpl, lookup: lookupStub() });
+  assert.match(r.body, /Orçamento grátis/);
+  const meta = Buffer.from('<meta charset="windows-1252"><title>Ação</title>', 'latin1');
+  const m = fetchStub({ 'https://meta.example/': new Response(meta) });
+  assert.match((await safeGet('https://meta.example/', { fetchImpl: m.fetchImpl, lookup: lookupStub() })).body, /Ação/);
 });

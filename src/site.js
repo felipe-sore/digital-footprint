@@ -22,6 +22,8 @@ const SOCIAL_HOSTS = [
   ['whatsapp', /(^|\.)(wa\.me|api\.whatsapp\.com)$/],
 ];
 
+const SHARE_PATH = /\/(sharer|share|sharing|intent|shareArticle|dialog\/(share|feed))(\.php)?(\/|$)/i;
+
 // Tags found in the HTML. A tag manager can load others later, so a tag that
 // is not here is "not identified", not "absent".
 const TAGS = {
@@ -79,7 +81,9 @@ function extract(html, baseUrl) {
     const url = node.is('a') ? absolute(node.attr('href'), baseUrl) : null;
     if (url) {
       const host = url.hostname.toLowerCase();
-      for (const [name, re] of SOCIAL_HOSTS) if (re.test(host) && !socials[name]) socials[name] = url.toString();
+      // "Share on LinkedIn" buttons point at the network, not at the company's profile.
+      const isShare = SHARE_PATH.test(url.pathname);
+      for (const [name, re] of SOCIAL_HOSTS) if (re.test(host) && !socials[name] && !isShare) socials[name] = url.toString();
       if (/\/blog(\/|$)/i.test(url.pathname) || /^blog$/i.test(text)) blogLink = true;
     }
     if (text && CTA.test(text) && !ctas.some((c) => c.text.toLowerCase() === text.toLowerCase()) && ctas.length < 10) {

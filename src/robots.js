@@ -24,7 +24,9 @@ function parseGroups(text) {
     const key = line.slice(0, i).trim().toLowerCase();
     const value = line.slice(i + 1).trim();
     if (key === 'user-agent') {
+      // An empty user-agent names nobody: its rules go to a group that matches no one.
       if (!current || !lastWasAgent) { current = { agents: [], rules: [] }; groups.push(current); }
+      if (!value) { lastWasAgent = true; continue; }
       current.agents.push(value.toLowerCase());
       lastWasAgent = true;
       continue;
