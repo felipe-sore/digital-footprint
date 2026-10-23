@@ -76,8 +76,6 @@ node bin/digital-footprint.js collect contoso.com --providers semrush,similarweb
 - **A hard cap:** a run refuses to make more than `--max-requests` paid calls (default 5).
 - **Cache:** results are cached per provider, domain, market and month, so rebuilding a report does not pay twice. The cache never holds a key, and no error message ever echoes a URL that carries one.
 
-The adapters are tested against the request and response shapes in each provider's documentation (bodies copied into the tests), not against live accounts.
-
 ## Safety
 
 The CLI fetches URLs taken from lists other people paste, and the report goes to a client, so:
